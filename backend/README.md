@@ -82,7 +82,7 @@ News sites have bot detection — if you send a normal requests.get() they block
 
 Extraction trick
 
-(Tries <article> tags first, then <li>, then <div class="card"> — works across different site layouts without custom CSS selectors per site.)
+Tries <article> tags first, then <li>, then <div class="card"> works across different site layouts without custom CSS selectors per site.
 
 🌐
 services/browser_client.py
