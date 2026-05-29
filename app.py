@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import time
-
-from processor import get_latest_signals
+from datetime import datetime
+from processor import get_latest_signals, chat_with_agent
 
 def run_sync():
     with st.spinner("Syncing data with Bright Data..."):
@@ -38,7 +38,6 @@ def configure_page():
         st.toast("Data synchronized successfully!", icon="✅")
         
         # Record the sync time in session state
-        from datetime import datetime
         st.session_state.last_synced = datetime.now().strftime("%I:%M %p")
         
     # Display the timestamp if it exists in session state
@@ -199,7 +198,6 @@ def main():
             
             # Display cleanly formatted data inside an expander
             with st.expander(f"📄 Detailed Profile: {selected_trial_id} ({trial_row['Company']})", expanded=True):
-                # Using columns inside the expander to make it look like a "card"
                 card_col1, card_col2 = st.columns([1, 2])
                 
                 with card_col1:
@@ -232,8 +230,8 @@ def main():
     
     # 3. Process new inputs
     if submit_button and user_input:
-        # Future logic: response = chat_with_agent(user_input, signals_df)
-        response_text = f"Simulated AI analysis for: '{user_input}'. The data currently indicates a cautious approach for early-phase combinations."
+        with st.spinner("Agent is querying knowledge graph..."):
+            response_text = chat_with_agent(user_input, signals_df)
         
         # Add the new interaction to the list
         st.session_state.chat_history.append({"query": user_input, "response": response_text})
