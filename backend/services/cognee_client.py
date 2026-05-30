@@ -26,7 +26,7 @@ class CogneeClient:
         """
         print(f"[*] Cognifying new market signal memory into the graph...")
         try:
-            # On passe le texte brut et on le traite
+            # We take the raw text and process it
             await cognee.add(text_content)
             await cognee.cognify()
             print("[+] Graph memory updated successfully.")
@@ -46,7 +46,7 @@ class CogneeClient:
                 
             context_string = "Historical Graph Context:\n"
             for result in results:
-                # Si le résultat est sous forme de dictionnaire, on extrait le texte
+                # If the result is in dictionary format, we extract the text
                 if isinstance(result, dict) and 'search_result' in result:
                     context_string += f"- {result['search_result'][0]}\n"
                 else:

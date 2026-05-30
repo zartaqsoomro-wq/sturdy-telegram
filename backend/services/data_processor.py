@@ -92,7 +92,7 @@ class DataProcessor:
             # 4. Call for AI
             response = self.client.chat.completions.create(
                 model=self.model,
-                response_format={ "type": "json_object" }, # Force le format JSON
+                response_format={ "type": "json_object" }, # Force JSON format
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here is the daily data:\n{context_text}"}
