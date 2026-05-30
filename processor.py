@@ -1,5 +1,12 @@
 import sys
 import os
+sys.path.append(os.getcwd())
+
+from backend.services.serp_client import SerpClient
+from backend.services.data_processor import DataProcessor
+# ...
+import sys
+import os
 # This line ensures Python looks in the current folder for your 'backend' package
 sys.path.append(os.getcwd())
 
