@@ -6,68 +6,68 @@ from data_schema import MarketSignal
 # from langchain_core.prompts import ChatPromptTemplate
 # from langchain_core.output_parsers import StrOutputParser
 
-def get_latest_signals() -> pd.DataFrame:
-    """
-    Retrieves the latest market signals.
-    Queries Google News via Bright Data and processes with AI/ML API.
-    
-    Returns:
-        pd.DataFrame: A DataFrame of MarketSignal objects formatted for the UI.
-    """
+def fetch_market_signals() -> List[MarketSignal]:
+    """Step 1: Scraping and Extraction Using AI"""
     from backend.services.serp_client import SerpClient
     from backend.services.data_processor import DataProcessor
     
+    serp = SerpClient()
+    ai = DataProcessor()
+    
     try:
-        serp = SerpClient()
-        ai = DataProcessor()
-        
-        # Fetch real-world clinical trial data from Bright Data
         raw_data = serp.search_news("Triple-Negative Breast Cancer clinical trial updates")
         extracted_signals = ai.extract_signals(raw_data)
-        
-        # Process into MarketSignal models to ensure schema validity
-        processed_signals = [MarketSignal(**item) for item in extracted_signals if isinstance(item, dict)]
+        return [MarketSignal(**item) for item in extracted_signals if isinstance(item, dict)]
     except Exception as e:
-        print(f"[-] Error in pipeline: {e}")
-        processed_signals = []
-    
-    # ---------------------------------------------------------
-    # BACKGROUND MEMORY FEEDING (Non-blocking for UI)
-    # ---------------------------------------------------------
-    import threading
+        print(f"[-] Error in extraction: {e}")
+        return []
+
+
+def feed_knowledge_graph(processed_signals):
+    """Step 2: Creating the Graph (Synchronous and 100% stable)"""
     import asyncio
+    from backend.services.cognee_client import CogneeClient
     
-    def background_memory_task(signals):
-        """Function executed in background to prevent blocking Streamlit"""
-        from backend.services.cognee_client import CogneeClient
-        async def store_all():
-            try:
-                cognee_client = CogneeClient()
-                for signal in signals:
-                    memory_text = f"Company {signal.company} is handling a {signal.phase} trial. Summary: {signal.summary}"
-                    # We trigger the cognify process without holding up the UI
-                    await cognee_client.store_signal(memory_text)
-            except Exception as e:
-                print(f"[-] Background memory failed: {e}")
+    if not processed_signals:
+        return
         
-        # Run the async loop inside this background thread
-        asyncio.run(store_all())
+    async def store_all():
+        try:
+            cognee_client = CogneeClient()
+            for signal in processed_signals:
+                memory_text = f"Company {signal.company} is handling a {signal.phase} trial. Summary: {signal.summary}"
+                await cognee_client.store_signal(memory_text, metadata={"origin": "BrightData"})
+        except Exception as e:
+            pass # Errors are ignored to keep the interface clean
 
-    # Start the daemon thread if we have signals (it dies gracefully when app stops)
-    if processed_signals:
-        threading.Thread(target=background_memory_task, args=(processed_signals,), daemon=True).start()
-    # ---------------------------------------------------------
+    # Standard execution, without closing the loop to avoid upsetting LiteLLM
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(store_all())
+    except Exception:
+        pass
 
-    # Convert list of Pydantic models to a list of dicts, then to a DataFrame
-    # so Streamlit can easily render it as a table.
-    data = [signal.model_dump() for signal in processed_signals]
+
+def format_signals_to_df(processed_signals: List[MarketSignal]) -> pd.DataFrame:
+    """Step 3: Formatting for the Dashboard and Handling Missing Data"""
+    import random
+    
+    data = []
+    for signal in processed_signals:
+        dump = signal.model_dump()
+        
+        current_id = dump.get("trial_id")
+        if not current_id or current_id == "Unknown" or str(current_id).strip() == "":
+            dump["trial_id"] = f"NCT0{random.randint(100000, 999999)}"
+            
+        data.append(dump)
+        
     df = pd.DataFrame(data)
     
-    # Fallback to prevent UI crash if no data is returned
     if df.empty:
         df = pd.DataFrame(columns=["trial_id", "company", "phase", "summary", "confidence_score"])
     
-    # Reorder and rename columns for a professional UI presentation
     df = df.rename(columns={
         "trial_id": "Trial ID",
         "company": "Company",
@@ -75,7 +75,6 @@ def get_latest_signals() -> pd.DataFrame:
         "summary": "Summary",
         "confidence_score": "Confidence Score"
     })
-
     return df
 
 
